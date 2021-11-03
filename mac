@@ -1,0 +1,108 @@
+#!/bin/sh
+
+# Welcome to ToppleTheNun's variant of the thoughtbot laptop script!
+# Be prepared to turn your laptop (or desktop, no haters here)
+# into an awesome development machine.
+
+fancy_echo() {
+  local fmt="$1"; shift
+
+  # shellcheck disable=SC2059
+  printf "\\n$fmt\\n" "$@"
+}
+
+# shellcheck disable=SC2154
+trap 'ret=$?; test $ret -ne 0 && printf "failed\n\n" >&2; exit $ret' EXIT
+
+set -e
+
+HOMEBREW_PREFIX="/usr/local"
+
+if [ -d "$HOMEBREW_PREFIX" ]; then
+  if ! [ -r "$HOMEBREW_PREFIX" ]; then
+    sudo chown -R "$LOGNAME:admin" /usr/local
+  fi
+else
+  sudo mkdir "$HOMEBREW_PREFIX"
+  sudo chflags norestricted "$HOMEBREW_PREFIX"
+  sudo chown -R "$LOGNAME:admin" "$HOMEBREW_PREFIX"
+fi
+
+update_shell() {
+  local shell_path;
+  shell_path="$(command -v fish)"
+
+  fancy_echo "Changing your shell to fish..."
+  if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
+    fancy_echo "Adding '$shell_path' to /etc/shells"
+    sudo sh -c "echo $shell_path >> /etc/shells"
+  fi
+  sudo chsh -s "$shell_path" "$USER"
+}
+
+case "$SHELL" in
+  */fish)
+    if [ "$(command -v fish)" != '/usr/local/bin/fish' ] ; then
+      update_shell
+    fi
+    ;;
+  *)
+    update_shell
+    ;;
+esac
+
+if ! command -v brew >/dev/null; then
+  fancy_echo "Installing Homebrew ..."
+    /bin/bash -c \
+      "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+
+    export PATH="/usr/local/bin:$PATH"
+fi
+
+if brew list | grep -Fq brew-cask; then
+  fancy_echo "Uninstalling old homebrew-cask..."
+  brew uninstall --force brew-cask
+fi
+
+fancy_echo "Updating Homebrew formulae..."
+brew update --force # https://github.com/Homebrew/brew/issues/1151
+brew bundle --file=- <<EOF
+brew "awscli"
+brew "bash"
+brew "bat"
+brew "chruby"
+brew "curl"
+brew "git-delta"
+brew "dog"
+brew "fd"
+brew "fish"
+brew "fzf"
+brew "exa"
+brew "git"
+brew "grc"
+brew "jenv"
+brew "jq"
+brew "ncdu"
+brew "neovim"
+brew "pyenv"
+brew "pyenv-virtualenv"
+brew "ripgrep"
+brew "ruby-install"
+brew "starship"
+brew "wget"
+brew "zoxide"
+brew "zsh"
+
+brew "openssl"
+brew "libyaml" # should come after openssl
+brew "coreutils"
+
+tap "homebrew/cask"
+tap "homebrew/cask-fonts"
+
+cask "font-hack-nerd-font"
+cask "iterm2"
+cask "temurin8"
+cask "temurin11"
+cask "visual-studio-code"
+EOF
