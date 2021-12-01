@@ -40,17 +40,6 @@ update_shell() {
   sudo chsh -s "$shell_path" "$USER"
 }
 
-case "$SHELL" in
-  */fish)
-    if [ "$(command -v fish)" != '/usr/local/bin/fish' ] ; then
-      update_shell
-    fi
-    ;;
-  *)
-    update_shell
-    ;;
-esac
-
 if ! command -v brew >/dev/null; then
   fancy_echo "Installing Homebrew ..."
     /bin/bash -c \
@@ -106,3 +95,16 @@ cask "temurin8"
 cask "temurin11"
 cask "visual-studio-code"
 EOF
+
+case "$SHELL" in
+  */fish)
+    if [ "$(command -v fish)" != '/usr/local/bin/fish' ] ; then
+      update_shell
+    fi
+    ;;
+  *)
+    update_shell
+    ;;
+esac
+
+fancy_echo "Done!"
