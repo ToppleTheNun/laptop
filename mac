@@ -30,9 +30,9 @@ fi
 
 update_shell() {
   local shell_path;
-  shell_path="$(command -v fish)"
+  shell_path="$(command -v zsh)"
 
-  fancy_echo "Changing your shell to fish..."
+  fancy_echo "Changing your shell to zsh..."
   if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
     fancy_echo "Adding '$shell_path' to /etc/shells"
     sudo sh -c "echo $shell_path >> /etc/shells"
@@ -125,8 +125,8 @@ cask "wombat"
 EOF
 
 case "$SHELL" in
-  */fish)
-    if [ "$(command -v fish)" != '/usr/local/bin/fish' ] ; then
+  */zsh)
+    if [ "$(command -v zsh)" != '/usr/local/bin/zsh' ] ; then
       update_shell
     fi
     ;;
