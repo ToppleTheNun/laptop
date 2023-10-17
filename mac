@@ -213,7 +213,7 @@ fi
 fancy_echo "Configuring sdkman version manager ..."
 if [ ! -d "$HOME/.sdkman" ]; then
   curl -s "https://get.sdkman.io?rcupdate=false" | bash
-  append_to_zshrc "source "$HOME/.sdkman/bin/sdkman-init.sh" 1
+  append_to_zshrc "source $HOME/.sdkman/bin/sdkman-init.sh" 1
 fi
 
 alias install_asdf_plugin=add_or_update_asdf_plugin
@@ -252,6 +252,15 @@ bundle config --global jobs $((number_of_cores - 1))
 
 fancy_echo "Installing latest Node ..."
 install_asdf_language "nodejs"
+
+# shellcheck disable=SC1091
+. "$HOME/.sdkman/bin/sdkman-init.sh"
+sdk install java 21-amzn
+sdk install java 17-amzn
+sdk install java 11-amzn
+sdk install java 8-amzn
+sdk install gradle
+sdk install maven
 
 if [ -f "$HOME/.laptop.local" ]; then
   fancy_echo "Running your customizations from ~/.laptop.local ..."
