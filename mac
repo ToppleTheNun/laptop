@@ -1,8 +1,10 @@
 #!/bin/sh
 
-# Welcome to ToppleTheNun's variant of the thoughtbot laptop script!
+# Welcome to the thoughtbot laptop script!
 # Be prepared to turn your laptop (or desktop, no haters here)
 # into an awesome development machine.
+
+# shellcheck disable=SC3043
 
 fancy_echo() {
   local fmt="$1"; shift
@@ -11,28 +13,54 @@ fancy_echo() {
   printf "\\n$fmt\\n" "$@"
 }
 
+append_to_zshrc() {
+  local text="$1" zshrc
+  local skip_new_line="${2:-0}"
+
+  if [ -w "$HOME/.zshrc.local" ]; then
+    zshrc="$HOME/.zshrc.local"
+  else
+    zshrc="$HOME/.zshrc"
+  fi
+
+  if ! grep -Fqs "$text" "$zshrc"; then
+    if [ "$skip_new_line" -eq 1 ]; then
+      printf "%s\\n" "$text" >> "$zshrc"
+    else
+      printf "\\n%s\\n" "$text" >> "$zshrc"
+    fi
+  fi
+}
+
 # shellcheck disable=SC2154
 trap 'ret=$?; test $ret -ne 0 && printf "failed\n\n" >&2; exit $ret' EXIT
 
 set -e
 
-HOMEBREW_PREFIX="/usr/local"
+if [ ! -d "$HOME/.bin/" ]; then
+  mkdir "$HOME/.bin"
+fi
 
-if [ -d "$HOMEBREW_PREFIX" ]; then
-  if ! [ -r "$HOMEBREW_PREFIX" ]; then
-    sudo chown -R "$LOGNAME:admin" /usr/local
-  fi
+if [ ! -f "$HOME/.zshrc" ]; then
+  touch "$HOME/.zshrc"
+fi
+
+# shellcheck disable=SC2016
+append_to_zshrc 'export PATH="$HOME/.bin:$PATH"'
+
+# Determine Homebrew prefix
+arch="$(uname -m)"
+if [ "$arch" = "arm64" ]; then
+  HOMEBREW_PREFIX="/opt/homebrew"
 else
-  sudo mkdir "$HOMEBREW_PREFIX"
-  sudo chflags norestricted "$HOMEBREW_PREFIX"
-  sudo chown -R "$LOGNAME:admin" "$HOMEBREW_PREFIX"
+  HOMEBREW_PREFIX="/usr/local"
 fi
 
 update_shell() {
   local shell_path;
   shell_path="$(command -v zsh)"
 
-  fancy_echo "Changing your shell to zsh..."
+  fancy_echo "Changing your shell to zsh ..."
   if ! grep "$shell_path" /etc/shells > /dev/null 2>&1 ; then
     fancy_echo "Adding '$shell_path' to /etc/shells"
     sudo sh -c "echo $shell_path >> /etc/shells"
@@ -40,93 +68,9 @@ update_shell() {
   sudo chsh -s "$shell_path" "$USER"
 }
 
-if ! command -v brew >/dev/null; then
-  fancy_echo "Installing Homebrew ..."
-    /bin/bash -c \
-      "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-
-    export PATH="/usr/local/bin:$PATH"
-fi
-
-if brew list | grep -Fq brew-cask; then
-  fancy_echo "Uninstalling old homebrew-cask..."
-  brew uninstall --force brew-cask
-fi
-
-fancy_echo "Updating Homebrew formulae..."
-brew update --force # https://github.com/Homebrew/brew/issues/1151
-brew bundle --file=- <<EOF
-tap "homebrew/bundle"
-tap "homebrew/cask"
-tap "homebrew/cask-fonts"
-tap "homebrew/cask-versions"
-tap "homebrew/core"
-brew "antigen"
-brew "aws-nuke"
-brew "awscli"
-brew "bash"
-brew "bat"
-brew "chruby"
-brew "coreutils"
-brew "csvq"
-brew "curl"
-brew "deno"
-brew "dog"
-brew "dust"
-brew "exa"
-brew "fd"
-brew "fish"
-brew "flyctl"
-brew "fzf"
-brew "git"
-brew "git-delta"
-brew "gnu-sed"
-brew "go"
-brew "grc"
-brew "helm"
-brew "htop"
-brew "httpie"
-brew "jenv"
-brew "jq"
-brew "k6"
-brew "k9s"
-brew "ktlint"
-brew "kubeseal"
-brew "kubespy"
-brew "kustomize"
-brew "libyaml"
-brew "maven"
-brew "ncdu"
-brew "neovim"
-brew "openssl@3"
-brew "pipx"
-brew "postgresql@14"
-brew "pyenv"
-brew "pyenv-virtualenv"
-brew "python@3.9"
-brew "rcm"
-brew "rename"
-brew "ripgrep"
-brew "ruby-install"
-brew "starship"
-brew "the_silver_searcher"
-brew "tilt"
-brew "wget"
-brew "zoxide"
-brew "zsh"
-cask "docker"
-cask "font-hack-nerd-font"
-cask "iterm2"
-cask "temurin11"
-cask "temurin17"
-cask "temurin8"
-cask "visual-studio-code"
-cask "wombat"
-EOF
-
 case "$SHELL" in
   */zsh)
-    if [ "$(command -v zsh)" != '/usr/local/bin/zsh' ] ; then
+    if [ "$(command -v zsh)" != "$HOMEBREW_PREFIX/bin/zsh" ] ; then
       update_shell
     fi
     ;;
@@ -135,4 +79,182 @@ case "$SHELL" in
     ;;
 esac
 
-fancy_echo "Done!"
+# checks architecture
+if [ "$(uname -m)" = "arm64" ]
+  then
+  # checks if Rosetta is already installed
+  if ! pkgutil --pkg-info=com.apple.pkg.RosettaUpdateAuto > /dev/null 2>&1
+  then
+    echo "Installing Rosetta"
+    # Installs Rosetta2
+    softwareupdate --install-rosetta --agree-to-license
+  else
+    echo "Rosetta is installed"
+  fi
+fi
+
+
+gem_install_or_update() {
+  if gem list "$1" --installed > /dev/null; then
+    gem update "$@"
+  else
+    gem install "$@"
+  fi
+}
+
+if ! command -v brew >/dev/null; then
+  fancy_echo "Installing Homebrew ..."
+    /bin/bash -c \
+      "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+    append_to_zshrc "eval \"\$($HOMEBREW_PREFIX/bin/brew shellenv)\""
+
+    export PATH="$HOMEBREW_PREFIX/bin:$PATH"
+fi
+
+if brew list | grep -Fq brew-cask; then
+  fancy_echo "Uninstalling old Homebrew-Cask ..."
+  brew uninstall --force brew-cask
+fi
+
+fancy_echo "Updating Homebrew formulae ..."
+brew update --force # https://github.com/Homebrew/brew/issues/1151
+brew bundle --file=- <<EOF
+tap "buo/cask-upgrade"
+tap "homebrew/bundle"
+tap "homebrew/cask-fonts"
+tap "homebrew/cask-versions"
+tap "homebrew/services"
+
+# Unix
+brew "curl"
+brew "universal-ctags"
+brew "git"
+brew "openssl@3"
+brew "rcm"
+brew "reattach-to-user-namespace"
+brew "the_silver_searcher"
+brew "tmux"
+brew "gnu-sed"
+brew "grc"
+brew "wget"
+brew "tree"
+brew "fzf"
+
+# Shell
+brew "antigen"
+brew "bash"
+brew "starship"
+brew "zsh"
+
+# Unix replacements
+brew "bat"
+brew "dog"
+brew "dust"
+brew "exa"
+brew "fd"
+brew "htop"
+brew "ripgrep"
+brew "zoxide"
+brew "ncdu"
+brew "neovim"
+brew "rename"
+
+# Development
+brew "argocd"
+brew "asdf"
+brew "awscli"
+brew "cmake"
+brew "corepack"
+brew "coreutils"
+brew "csvq"
+brew "deno"
+brew "flyctl"
+brew "jq"
+brew "gh"
+brew "go"
+brew "helm"
+brew "httpie"
+brew "jenv"
+brew "k6"
+brew "k9s"
+brew "kubeseal"
+brew "kubespy"
+brew "kustomize"
+brew "libyaml"
+brew "maven"
+brew "ninja"
+brew "pipx"
+brew "pipenv"
+brew "tilt"
+cask "gpg-suite-no-mail"
+
+# Image manipulation
+brew "imagemagick"
+
+# PDF Rendering
+brew "poppler"
+
+# Terminal
+brew "git-delta"
+cask "font-jetbrains-mono-nerd-font"
+cask "iterm2"
+
+# Miscellaneous
+brew "mas"
+EOF
+
+fancy_echo "Configuring asdf version manager ..."
+if [ ! -d "$HOME/.asdf" ]; then
+  brew install asdf
+  append_to_zshrc "source $(brew --prefix asdf)/libexec/asdf.sh" 1
+fi
+
+fancy_echo "Configuring sdkman version manager ..."
+if [ ! -d "$HOME/.sdkman" ]; then
+  curl -s "https://get.sdkman.io?rcupdate=false" | bash
+  append_to_zshrc "source "$HOME/.sdkman/bin/sdkman-init.sh" 1
+fi
+
+alias install_asdf_plugin=add_or_update_asdf_plugin
+add_or_update_asdf_plugin() {
+  local name="$1"
+  local url="$2"
+
+  if ! asdf plugin-list | grep -Fq "$name"; then
+    asdf plugin-add "$name" "$url"
+  else
+    asdf plugin-update "$name"
+  fi
+}
+
+# shellcheck disable=SC1091
+. "$(brew --prefix asdf)/libexec/asdf.sh"
+add_or_update_asdf_plugin "ruby" "https://github.com/asdf-vm/asdf-ruby.git"
+add_or_update_asdf_plugin "nodejs" "https://github.com/asdf-vm/asdf-nodejs.git"
+
+install_asdf_language() {
+  local language="$1"
+  local version
+  version="$(asdf list-all "$language" | grep -v "[a-z]" | tail -1)"
+
+  if ! asdf list "$language" | grep -Fq "$version"; then
+    asdf install "$language" "$version"
+    asdf global "$language" "$version"
+  fi
+}
+
+fancy_echo "Installing latest Ruby ..."
+install_asdf_language "ruby"
+gem update --system
+number_of_cores=$(sysctl -n hw.ncpu)
+bundle config --global jobs $((number_of_cores - 1))
+
+fancy_echo "Installing latest Node ..."
+install_asdf_language "nodejs"
+
+if [ -f "$HOME/.laptop.local" ]; then
+  fancy_echo "Running your customizations from ~/.laptop.local ..."
+  # shellcheck disable=SC1091
+  . "$HOME/.laptop.local"
+fi
