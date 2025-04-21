@@ -252,10 +252,11 @@ install_asdf_language "nodejs"
 
 # shellcheck disable=SC1091
 . "$HOME/.sdkman/bin/sdkman-init.sh"
-sdk install java 21-amzn
-sdk install java 17-amzn
-sdk install java 11-amzn
-sdk install java 8-amzn
+sdk install java 24-amzn
+sdk install java 21.0.7-amzn
+sdk install java 17.0.15-amzn
+sdk install java 11.0.27-amzn
+sdk install java 8.0.452-amzn
 sdk install gradle
 sdk install maven
 
