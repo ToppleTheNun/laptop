@@ -219,9 +219,9 @@ add_or_update_asdf_plugin() {
   local url="$2"
 
   if ! asdf plugin-list | grep -Fq "$name"; then
-    asdf plugin-add "$name" "$url"
+    asdf plugin add "$name" "$url"
   else
-    asdf plugin-update "$name"
+    asdf plugin update "$name"
   fi
 }
 
@@ -237,7 +237,7 @@ install_asdf_language() {
 
   if ! asdf list "$language" | grep -Fq "$version"; then
     asdf install "$language" "$version"
-    asdf global "$language" "$version"
+    asdf set -u "$language" "$version"
   fi
 }
 
