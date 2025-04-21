@@ -121,10 +121,6 @@ fancy_echo "Updating Homebrew formulae ..."
 brew update --force # https://github.com/Homebrew/brew/issues/1151
 brew bundle --file=- <<EOF
 tap "buo/cask-upgrade"
-tap "homebrew/bundle"
-tap "homebrew/cask-fonts"
-tap "homebrew/cask-versions"
-tap "homebrew/services"
 tap "pkgxdev/made"
 
 # Unix
@@ -150,9 +146,8 @@ brew "zsh"
 
 # Unix replacements
 brew "bat"
-brew "dog"
 brew "dust"
-brew "exa"
+brew "eza"
 brew "fd"
 brew "htop"
 brew "ripgrep"
