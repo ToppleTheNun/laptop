@@ -202,6 +202,7 @@ brew "mas"
 EOF
 
 fancy_echo "Installing latest Ruby ..."
+mise settings ruby.compile=false
 mise use --global ruby@4
 gem update --system
 number_of_cores=$(sysctl -n hw.ncpu)
