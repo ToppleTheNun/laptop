@@ -158,7 +158,6 @@ brew "rename"
 
 # Development
 brew "argocd"
-brew "asdf"
 brew "awscli"
 brew "cmake"
 brew "corepack"
@@ -179,6 +178,7 @@ brew "kubespy"
 brew "kustomize"
 brew "libyaml"
 brew "maven"
+brew "mise"
 brew "ninja"
 brew "pkgxdev/made/pkgx"
 brew "pipx"
@@ -201,54 +201,20 @@ cask "iterm2"
 brew "mas"
 EOF
 
-fancy_echo "Configuring asdf version manager ..."
-if [ ! -d "$HOME/.asdf" ]; then
-  brew install asdf
-  append_to_zshrc "source $(brew --prefix asdf)/libexec/asdf.sh" 1
-fi
+fancy_echo "Installing latest Ruby ..."
+mise use --global ruby@4
+gem update --system
+number_of_cores=$(sysctl -n hw.ncpu)
+bundle config --global jobs $((number_of_cores - 1))
+
+fancy_echo "Installing latest Node ..."
+mise use --global node@24
 
 fancy_echo "Configuring sdkman version manager ..."
 if [ ! -d "$HOME/.sdkman" ]; then
   curl -s "https://get.sdkman.io?rcupdate=false" | bash
   append_to_zshrc "source $HOME/.sdkman/bin/sdkman-init.sh" 1
 fi
-
-alias install_asdf_plugin=add_or_update_asdf_plugin
-add_or_update_asdf_plugin() {
-  local name="$1"
-  local url="$2"
-
-  if ! asdf plugin-list | grep -Fq "$name"; then
-    asdf plugin add "$name" "$url"
-  else
-    asdf plugin update "$name"
-  fi
-}
-
-# shellcheck disable=SC1091
-. "$(brew --prefix asdf)/libexec/asdf.sh"
-add_or_update_asdf_plugin "ruby" "https://github.com/asdf-vm/asdf-ruby.git"
-add_or_update_asdf_plugin "nodejs" "https://github.com/asdf-vm/asdf-nodejs.git"
-
-install_asdf_language() {
-  local language="$1"
-  local version
-  version="$(asdf list-all "$language" | grep -v "[a-z]" | tail -1)"
-
-  if ! asdf list "$language" | grep -Fq "$version"; then
-    asdf install "$language" "$version"
-    asdf set -u "$language" "$version"
-  fi
-}
-
-fancy_echo "Installing latest Ruby ..."
-install_asdf_language "ruby"
-gem update --system
-number_of_cores=$(sysctl -n hw.ncpu)
-bundle config --global jobs $((number_of_cores - 1))
-
-fancy_echo "Installing latest Node ..."
-install_asdf_language "nodejs"
 
 # shellcheck disable=SC1091
 . "$HOME/.sdkman/bin/sdkman-init.sh"
